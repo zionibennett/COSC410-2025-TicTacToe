@@ -8,6 +8,7 @@
     "build": "vite build",
     "preview": "vite preview",
     "test": "vitest",
+    "test:ci": "vitest run",
     "e2e": "playwright test"
   },
   "dependencies": {
@@ -26,6 +27,7 @@
     "@vitejs/plugin-react": "^4.3.0",
     "autoprefixer": "^10.4.21",
     "jsdom": "^26.1.0",
+    "msw": "^2.11.2",
     "postcss": "^8.5.6",
     "tailwindcss": "^4.1.13",
     "typescript": "^5.5.4",

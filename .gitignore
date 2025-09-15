@@ -72,6 +72,7 @@ frontend/.vite/
 frontend/.eslintcache
 frontend/.parcel-cache/
 frontend/.cache/
+frontend/pnpm-lock.yaml
 
 # Env files (keep examples)
 frontend/.env
@@ -81,6 +82,14 @@ frontend/.env.*
 # Vite local env variants (ignore all .local)
 frontend/.env.local
 frontend/.env.*.local
+
+# Test coverage
+frontend/coverage/
+frontend/coverage.xml
+frontend/htmlcov/
+frontend/junit.xml
+frontend/test-results/
+frontend/test-results.xml
 
 # Build outputs (if you ever export static)
 frontend/build/
