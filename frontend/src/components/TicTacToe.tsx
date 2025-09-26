@@ -5,13 +5,16 @@ type Cell = Player | null;
 
 type Props = {
   onWin?: (winner: Player | "draw" | null) => void;
+  onCellClick?: (cellIndex: number) => void;
+  disabled?: boolean;
+  currentPlayer: Player;
 };
 
 // ----- Backend DTOs -----
 type GameStateDTO = {
   id: string;
   board: Cell[];
-  current_player: Player;
+  
   winner: Player | null;
   is_draw: boolean;
   status: string;
@@ -24,12 +27,13 @@ const API_BASE =
 
 
 
-export default function TicTacToe({ onWin }: Props) {
+export default function TicTacToe({ onWin,onCellClick,disabled,currentPlayer }: Props) {
   const [state, setState] = React.useState<GameStateDTO | null>(null);
   const [loading, setLoading] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
+  
 
-  // Create a new game on mount
+  
   React.useEffect(() => {
     let canceled = false;
     async function start() {
@@ -50,29 +54,38 @@ export default function TicTacToe({ onWin }: Props) {
     };
   }, []);
 
-  // Notify parent when result changes
+ 
   React.useEffect(() => {
-    if (!state || !onWin) return;
-    if (state.winner) onWin(state.winner);
-    else if (state.is_draw) onWin("draw");
-  }, [state?.winner, state?.is_draw]);
+  if (!onWin) return;
+  if (state?.winner) {
+    onWin(state.winner);
+  } else if (state?.is_draw) {
+    onWin("draw");
+  } else {
+    onWin(null);
+  }
+}, [state?.winner, state?.is_draw, onWin]);  
+
 
   async function createGame(): Promise<GameStateDTO> {
     const r = await fetch(`${API_BASE}/tictactoe/new`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ starting_player: "X" }),
+      body: JSON.stringify({ starting_player: currentPlayer}),
     });
     if (!r.ok) throw new Error(`Create failed: ${r.status}`);
     return r.json();
   }
 
-  async function playMove(index: number): Promise<GameStateDTO> {
+  async function playMove(index: number, player: Player): Promise<GameStateDTO> {
     if (!state) throw new Error("No game");
+
+    const playerForThisMove = currentPlayer;  
+
     const r = await fetch(`${API_BASE}/tictactoe/${state.id}/move`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ index }),
+      body: JSON.stringify({ index, player}),
     });
     if (!r.ok) {
       const detail = await r.json().catch(() => ({}));
@@ -83,14 +96,21 @@ export default function TicTacToe({ onWin }: Props) {
 
   async function handleClick(i: number) {
     if (!state || loading) return;
-    // Light client-side guard to avoid noisy 400s:
+    
     if (state.winner || state.is_draw || state.board[i] !== null) return;
+
+    const playerForThisMove = currentPlayer;  
 
     setLoading(true);
     setError(null);
     try {
-      const next = await playMove(i);
+      console.log("Sending move:", { index: i, player: playerForThisMove });
+
+      const next = await playMove(i,playerForThisMove);
       setState(next);
+      if (onCellClick) {
+    onCellClick(i);
+  }
     } catch (e: any) {
       setError(e?.message ?? "Move failed");
     } finally {
@@ -130,29 +150,50 @@ export default function TicTacToe({ onWin }: Props) {
     );
   }
 
-  const { board, status } = state;
+  const { board, winner, is_draw } = state;
+  <div className="text-center mb-2 text-xl font-semibold">
+  {winner
+    ? `${winner} wins`
+    : is_draw
+      ? "Draw"
+      : `${currentPlayer}'s turn`}
+</div>
 
   return (
-    <div className="max-w-sm mx-auto p-4">
-      <div className="text-center mb-2 text-xl font-semibold">{status}</div>
-      <div className="grid grid-cols-3 gap-2">
-        {board.map((c, i) => (
-          <button
-            key={i}
-            className="aspect-square rounded-2xl border text-3xl font-bold flex items-center justify-center disabled:opacity-50"
-            onClick={() => handleClick(i)}
-            aria-label={`cell-${i}`}
-            disabled={loading || c !== null || state.winner !== null || state.is_draw}
-          >
-            {c}
-          </button>
-        ))}
-      </div>
-      <div className="text-center mt-3">
-        <button className="rounded-2xl px-4 py-2 border" onClick={reset} disabled={loading}>
-          New Game
-        </button>
-      </div>
-    </div>
+  <div className="w-full h-full p-2">
+    <div className="grid grid-cols-3 gap-2 w-full h-full">
+      {board.map((c, i) => {
+  const displayValue =
+    state.winner !== null ? state.winner : c; 
+  return (
+    <button
+      key={i}
+      className={`aspect-square min-w-[80px] min-h-[80px] rounded-2xl border text-3xl font-bold flex items-center justify-center
+        ${
+          !disabled && !loading && c === null && state.winner === null && !state.is_draw
+            ? "bg-green-100 hover:bg-green-200"
+            : ""
+        }
+        disabled:opacity-50`}
+      onClick={() => {
+        if (disabled) return;
+        handleClick(i);
+        
+      }}
+      disabled={
+        disabled ||
+        loading ||
+        c !== null ||
+        state.winner !== null ||
+        state.is_draw
+      }
+    >
+      {displayValue}
+    </button>
   );
-}
+})}
+
+    </div>
+  </div>
+)}
+
